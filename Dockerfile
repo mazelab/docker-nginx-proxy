@@ -114,6 +114,9 @@ ENV GLOB_LIMIT_CONS_PER_IP 50
 # Define the peak amount of requests per connection allowed.
 ENV GLOB_LIMIT_REQS_BURST 80
 
+# Enabled high compatibility mode.
+ENV GLOB_COMPATIBILITY "1"
+
 # Connect to docker host via socket by default
 ENV DOCKER_HOST unix:///tmp/docker.sock
 

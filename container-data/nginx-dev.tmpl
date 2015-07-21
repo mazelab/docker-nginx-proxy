@@ -35,6 +35,8 @@
 
 {{ $upIdleConnections := .Env.GLOB_UPSTREAM_IDLE_CONNECTIONS }}
 
+{{ $compatibility := .Env.GLOB_COMPATIBILITY }}
+
 ## configuration input check
 # bundled infix: {{.Env.GLOB_SSL_CERT_BUNDLE_INFIX}}
 # redirect prefix: {{.Env.GLOB_AUTO_REDIRECT_PREFIX}}
@@ -288,7 +290,7 @@ server {
                 {{ end }}
 
                 {{/* Additional headers */}}
-                {{ if eq $spdyEnabled "1" }}
+                {{ if (and (eq $spdyEnabled "1") (eq $compatibility "0")) }}
                     {{/* SPDY effect 2 */}}
                     add_header Alternate-Protocol  443:npn-spdy/3;
                 {{ end }}
@@ -318,9 +320,11 @@ server {
                         auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
                     {{ end }}
                     
-                    {{/* Security limits */}}
-                    limit_conn perip {{ $secLimitConsPerIp }};
-                    limit_req zone=persec burst={{ $secLimitReqsBurst }};
+                    {{ if eq $compatibility "0" }}
+                        {{/* Security limits */}}
+                        limit_conn perip {{ $secLimitConsPerIp }};
+                        limit_req zone=persec burst={{ $secLimitReqsBurst }};
+                    {{ end }}    
                 }
                 
         }
@@ -384,9 +388,11 @@ server {
                             auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
                         {{ end }}
                         
-                        {{/* Security limits */}}
-                        limit_conn perip {{ $secLimitConsPerIp }};
-                        limit_req zone=persec burst={{$secLimitReqsBurst }};
+                        {{ if eq $compatibility "0" }}
+                            {{/* Security limits */}}
+                            limit_conn perip {{ $secLimitConsPerIp }};
+                            limit_req zone=persec burst={{$secLimitReqsBurst }};
+                        {{ end }}
                 }
                 
                 
