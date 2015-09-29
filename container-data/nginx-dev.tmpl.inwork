@@ -27,6 +27,8 @@
 {{ $sslSessionCache := .Env.GLOB_SSL_SESSION_CACHE }}
 {{ $sslForce := .Env.GLOB_SSL_FORCE }}
 
+{{ $sslRedirectPort := or (.Env.GLOB_SSL_REDIRECT_PORT) ((where (where $ "IP" .Env.PROXY_IP | first).Addresses "Port" "443" | first).HostPort) "443" }}
+
 {{ $sslOcspValidTime := .Env.GLOB_SSL_OCSP_VALID_TIME }}
 {{ $sslOcspDnsAdresses := .Env.GLOB_SSL_OCSP_DNS_ADDRESSES }}
 {{ $sslOcspDnsTimeout := .Env.GLOB_SSL_OCSP_DNS_TIMEOUT }}
@@ -98,7 +100,7 @@ server {
     {{ $hostAndPortArray := split $hostAndPort ":" }}
     {{ $host := first $hostAndPortArray }}
     {{ $path := replace $hostAndPort $host "" 1 }}
-    
+
     {{ $hostAndPortLen := len $hostAndPortArray }}
     {{ if gt $hostAndPortLen 1 }}
         {{ $port := last $hostAndPortArray }}
@@ -113,12 +115,12 @@ server {
     {{ range $container := $containers }}
 
     	{{ $addrLen := len $container.Addresses }}
-    
+
         {{/* ADDRESSING SWITCH CASE. */}}
-    
+
     	{{ if eq $addrLen 1 }}
     	{{/* Address/Port count == 1, use the only one */}}
-    
+
     		{{ with $address := index $container.Addresses 0 }}
             # {{$container.Name}}.single-port
             server {{ $address.IP }}:{{ $address.Port }}{{ $path }};
@@ -136,16 +138,16 @@ server {
         	{{ end }}
     	{{ else if $container.Env.VIRTUAL_PORT }}
         {{/* Port count != 1, VIRTUAL_PORT found, use given */}}
-    
+
     		{{ range $address := .Addresses }}
-        
+
     		   {{ if eq $address.Port $container.Env.VIRTUAL_PORT }}
             # {{$container.Name}}.virtual-port-from-env
             server {{ $address.IP }}:{{ $address.Port }}{{ $path }};
     		   {{ end }}
-           
+
     		{{ end }}
-	
+
     	{{ else }}
         {{/* Try to fall back to standard web port 80  */}}
         	{{ range $address := $container.Addresses }}
@@ -162,12 +164,12 @@ server {
 
         {{/* ADRESSING SWITCH. end */}}
     	{{ end }}
-    
+
         {{/* Keep idle connections to upstream services, so there is no need for TCP handshaking latency etc.*/}}
         {{ if ne $upIdleConnections "0" }}
             keepalive {{ $upIdleConnections }};
         {{ end }}
-        
+
     {{/* UPSTREAM GENERATION. end */}}
     {{ end }}
     }
@@ -187,7 +189,7 @@ server {
 
     {{/* Use the cert specifid on the container or fallback to the best vhost match */}}
     {{ $cert := (coalesce $certName $vhostCert) }}
-    
+
     {{/* Allow force ssl overrides by single container or container groups */}}
     {{ $sslForce := or (first (groupByKeys $containers "Env.VIRTUAL_SSL_FORCE")) $sslForce }}
 
@@ -198,25 +200,25 @@ server {
         {{ if eq $autoRedirectEnabled "1" }}
 
         server {
-            
+
             {{/* Security limits */}}
             limit_conn perip {{ $secLimitConsPerIp }};
             limit_req zone=persec burst={{$secLimitReqsBurst }} nodelay;
-            
+
             {{ if eq $autoRedirectDirection "0" }}
             {{/* Redirect prefixed host to plain host via moved permanently */}}
-    
+
                 server_name  {{ $prefix }}.{{ $host }};
                 listen 443 ssl;
                 rewrite ^(.*) https://{{ $host }}$1 permanent;
-    
+
             {{ else }}
             {{/* Redirect non-prefixed host to prefixed host via moved permanently */}}
-    
+
                 server_name {{ $host }};
                 listen 443 ssl;
                 rewrite ^(.*) https://{{ $prefix }}.{{ $host }}$1 permanent;
-    
+
             {{/* AUTO_REDIRECT_DIRECTION end */}}
             {{ end }}
         }
@@ -225,27 +227,28 @@ server {
         {{ end }}
 
         {{ if eq $sslForce "1" }}
-            
+
             {{/* Enforce https, redirect http */}}
             server {
+                set $sslRedirectPort {{ if $sslRedirectPort }}:{{$sslRedirectPort}}{{else}}:443{{end}};
                 server_name {{ $host }};
-                rewrite ^(.*) https://{{ $host }}$1 permanent;
+                rewrite ^(.*) https://{{ $host }}$sslRedirectPort$1 permanent;
             }
-            
+
         {{ else }}
-            
+
             {{/* Allow http endpoint */}}
             server {
                 server_name {{ $host }};
                 listen 80;
-                
+
                 {{/* Handle static file serving if requested by container */}}
                 {{ range $uriAndTarget := groupByMulti $containers "Env.VIRTUAL_STATIC_FILE_CONFIG" "," }}
 
                     {{/* Allow custom seperators due to regex */}}
                     {{ $seppi := or (first (groupByKeys $containers "Env.VIRTUAL_STATIC_CONFIG_ITEM_SEPERATOR")) ">" }}
                     {{ $uriAndTargetArray := split $uriAndTarget $seppi }}
-                
+
                     {{ /* Length Check */}}
                     {{ if len ( uriAndTargetArray ) gt 1 }}
 
@@ -267,17 +270,17 @@ server {
 
                 {{ /* Static file serving end. */}}
                 {{ end }}
-                
+
                 location / {
                         proxy_pass {{ $proto }}://{{ $host }};
-                
+
                         {{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
                             auth_basic "Provide authentication for {{ $host }}";
                             auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
                         {{ end }}
                 }
 
-                
+
         }
         {{ end }}
 
@@ -295,7 +298,7 @@ server {
                 {{ else }}
                     listen 443 ssl;
                 {{ end }}
-                
+
                 {{/* SSL main config */}}
                 ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
                 ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-RC4-SHA;
@@ -345,7 +348,7 @@ server {
                     {{/* Allow custom seperators due to regex */}}
                     {{ $seppi := or (first (groupByKeys $containers "Env.VIRTUAL_STATIC_CONFIG_ITEM_SEPERATOR")) ">" }}
                     {{ $uriAndTargetArray := split $uriAndTarget $seppi }}
-            
+
                     {{ /* Length Check */}}
                     {{ if len ( uriAndTargetArray ) gt 1 }}
 
@@ -369,39 +372,39 @@ server {
                 {{ end }}
 
                 location / {
-            
+
                     {{/* Pass with proto optionally to provide forcing connection to backend via protocol like HTTPS if necessary */}}
                     proxy_pass {{ $proto }}://{{ $host }};
-            
+
                     {{/* Add basic auth if htpasswd dir contains a file named like the host */}}
                     {{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
                         auth_basic "Provide authentication for {{ $host }}";
                         auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
                     {{ end }}
                 }
-                
+
         }
 
     {{/* Valid HTTPS certificate and key files found. end */}}
-    {{ else }} 
+    {{ else }}
     {{/* Defaulting to HTTP. */}}
 
         {{/* Automatic redirects e.g. non-www to www / vice versa */}}
         {{ if eq $autoRedirectEnabled "1" }}
 
             server {
-                
+
                 {{/* REDIRECT_DIRECTION */}}
                 {{ if eq $autoRedirectDirection "0" }}
-    
+
                     server_name  {{ $prefix }}.{{ $host }};
                     rewrite ^(.*) http://{{ $host }}$1 permanent;
-   
+
                 {{ else }}
-    
+
                     server_name {{ $host }};
                     rewrite ^(.*) http://{{ $prefix }}.{{ $host }}$1 permanent;
-                    
+
                 {{/* REDIRECT_DIRECTION end. */}}
                 {{ end }}
             }
@@ -434,7 +437,7 @@ server {
                     {{/* Allow custom seperators due to regex */}}
                     {{ $seppi := or (first (groupByKeys $containers "Env.VIRTUAL_STATIC_CONFIG_ITEM_SEPERATOR")) ">" }}
                     {{ $uriAndTargetArray := split $uriAndTarget $seppi }}
-            
+
                     {{ /* Length Check */}}
                     {{ if len ( uriAndTargetArray ) gt 1 }}
 
@@ -459,7 +462,7 @@ server {
 
                 location / {
                         proxy_pass {{ $proto }}://{{ $host }};
-                
+
                         {{/* Add 'Basic' auth if config was found for vhost. */}}
                         {{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
                             auth_basic "Provide authentication for {{ $host }}";

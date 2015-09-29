@@ -1,4 +1,4 @@
-# Dynmaic auto-generated nginx conf {{ $infix := "" }} {{ $autoRedirectEnabled := "0" }} {{ $prefix := "" }} {{ $sslForce := "1" }} {{ $spdyEnabled := "0" }} {{ $allowHttp := "0" }} {{ $port := "none" }} {{ $upIdleConnections := "0" }} {{ $enableWildCors := "0" }} {{ $secLimitConsPerIp := .Env.GLOB_LIMIT_CONS_PER_IP }} {{ $secLimitReqsBurst := .Env.GLOB_LIMIT_REQS_BURST }} {{ $infix := .Env.GLOB_SSL_CERT_BUNDLE_INFIX }} {{ $autoRedirectEnabled := .Env.GLOB_AUTO_REDIRECT_ENABLED }} {{ $prefix := .Env.GLOB_AUTO_REDIRECT_PREFIX }} {{ $spdyEnabled := .Env.GLOB_SPDY_ENABLED }} {{ $unavailableService := .Env.GLOB_HTTP_NO_SERVICE }} {{ $autoRedirectDirection := .Env.GLOB_AUTO_REDIRECT_DIRECTION }} {{ $sslSessionTimeout := .Env.GLOB_SSL_SESSION_TIMEOUT }} {{ $sslSessionCache := .Env.GLOB_SSL_SESSION_CACHE }} {{ $sslForce := .Env.GLOB_SSL_FORCE }} {{ $allowHttp := .Env.GLOB_ALLOW_HTTP_FALLBACK }} {{ $upIdleConnections := .Env.GLOB_UPSTREAM_IDLE_CONNECTIONS }} {{ $sslOcspValidTime := .Env.GLOB_SSL_OCSP_VALID_TIME }} {{ $sslOcspDnsAdresses := .Env.GLOB_SSL_OCSP_DNS_ADDRESSES }} {{ $sslOcspDnsTimeout := .Env.GLOB_SSL_OCSP_DNS_TIMEOUT }} {{ $enableWildCors := .Env.GLOB_WILD_CORS }}
+# Dynmaic auto-generated nginx conf {{ $infix := "" }} {{ $autoRedirectEnabled := "0" }} {{ $prefix := "" }} {{ $sslForce := "1" }} {{ $sslRedirectPort := or (.Env.GLOB_SSL_REDIRECT_PORT) ((where (where $ "IP" .Env.PROXY_IP | first).Addresses "Port" "443" | first).HostPort) "443" }} {{ $spdyEnabled := "0" }} {{ $allowHttp := "0" }} {{ $port := "none" }} {{ $upIdleConnections := "0" }} {{ $enableWildCors := "0" }} {{ $secLimitConsPerIp := .Env.GLOB_LIMIT_CONS_PER_IP }} {{ $secLimitReqsBurst := .Env.GLOB_LIMIT_REQS_BURST }} {{ $infix := .Env.GLOB_SSL_CERT_BUNDLE_INFIX }} {{ $autoRedirectEnabled := .Env.GLOB_AUTO_REDIRECT_ENABLED }} {{ $prefix := .Env.GLOB_AUTO_REDIRECT_PREFIX }} {{ $spdyEnabled := .Env.GLOB_SPDY_ENABLED }} {{ $unavailableService := .Env.GLOB_HTTP_NO_SERVICE }} {{ $autoRedirectDirection := .Env.GLOB_AUTO_REDIRECT_DIRECTION }} {{ $sslSessionTimeout := .Env.GLOB_SSL_SESSION_TIMEOUT }} {{ $sslSessionCache := .Env.GLOB_SSL_SESSION_CACHE }} {{ $sslForce := .Env.GLOB_SSL_FORCE }} {{ $allowHttp := .Env.GLOB_ALLOW_HTTP_FALLBACK }} {{ $upIdleConnections := .Env.GLOB_UPSTREAM_IDLE_CONNECTIONS }} {{ $sslOcspValidTime := .Env.GLOB_SSL_OCSP_VALID_TIME }} {{ $sslOcspDnsAdresses := .Env.GLOB_SSL_OCSP_DNS_ADDRESSES }} {{ $sslOcspDnsTimeout := .Env.GLOB_SSL_OCSP_DNS_TIMEOUT }} {{ $enableWildCors := .Env.GLOB_WILD_CORS }}
 map $http_x_forwarded_proto $proxy_x_forwarded_proto {
   default $http_x_forwarded_proto;
   ''      $scheme;
@@ -45,8 +45,9 @@ server { {{ if eq $autoRedirectDirection "0" }}
     rewrite ^(.*) http://{{ $prefix }}.{{ $host }}$1 permanent; {{ end }}
 } {{ end }} {{ if eq $sslForce "1" }}
 server {
+    set $sslRedirectPort {{ if $sslRedirectPort }}:{{$sslRedirectPort}}{{else}}:443{{end}};
     server_name {{ $host }};
-    return 301 https://$server_name$request_uri;
+    return 301 https://$server_name$sslRedirectPort$request_uri;
 } {{ else }}
 server {
     server_name {{ $host }};

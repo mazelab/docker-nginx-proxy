@@ -24,7 +24,7 @@ RUN wget -P /usr/local/bin -q https://godist.herokuapp.com/projects/ddollar/fore
  && chmod u+x /usr/local/bin/forego
 
 # Set docker gen version to use
-ENV DOCKER_GEN_VERSION 0.4.0
+ENV DOCKER_GEN_VERSION 0.4.1
 
 # Install Docker-Gen
 RUN wget -q https://github.com/jwilder/docker-gen/releases/download/$DOCKER_GEN_VERSION/docker-gen-linux-amd64-$DOCKER_GEN_VERSION.tar.gz \
@@ -127,6 +127,9 @@ ENV GLOB_WILD_CORS "0"
 # Connect to docker host via socket by default
 ENV DOCKER_HOST unix:///tmp/docker.sock
 
+# Set custom ssl redirect port
+ENV GLOB_SSL_REDIRECT_PORT ""
+
 RUN chmod a+x /up/prepare.sh && bash ./up/prepare.sh 
 RUN rm -rf /up
 
@@ -138,8 +141,12 @@ RUN echo "* 1 * * * /usr/local/sbin/rotate_nginx_log.sh" >> /etc/cron.d/nginx_lo
 # Change to working directory
 WORKDIR /app/
 
+ADD ./docker-entrypoint.sh /app/docker-entrypoint.sh
+
 # Add late, as tmpl is most modified part and less content needs to be rebuilt
 ADD ./container-data/nginx-${GLOB_TMPL_MODE}.tmpl ./nginx.tmpl
 
 VOLUME ["/etc/nginx/certs","/etc/nginx/htpasswd","/etc/nginx/vhost.d/","/etc/nginx/conf.d/","/var/log/nginx"]
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["forego", "start", "-r"]

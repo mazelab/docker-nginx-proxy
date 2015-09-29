@@ -39,6 +39,10 @@ It provides/uses [nginx](http://nginx.org/ru/) limiting capabilities with differ
 
 # Basics
 
+## Forked FROM
+
+**[Markus Kosmal](https://github.com/mko-x)** [nginx-proxy](https://github.com/mko-x/docker-nginx-proxy)
+
 ## FROM
 
 **[Jason Wilder](https://github.com/jwilder)** created [nginx-proxy](https://github.com/jwilder/nginx-proxy) for docker based on his [docker-gen](https://registry.hub.docker.com/u/jwilder/docker-gen/) and [nginx](http://nginx.org/ru/) created by **Igor Sysoev**.
@@ -399,6 +403,16 @@ If you don't get it, Frederic made a pretty good post([original (french)](https:
 nginx-proxy sets up a container running nginx and [docker-gen][1].  docker-gen generates reverse proxy configs for nginx and reloads nginx when containers are started and stopped.
 
 See [Automated Nginx Reverse Proxy for Docker][2] for why you might want to use this.
+
+## HTTP to HTTPS redirecting
+
+The used port to redirect to is the host port which is bound to 443. You can also set a custom redirect port with the environment variable HTTPS_REDIRECT_PORT.
+ 
+    $ docker run -d -p 8080:80 -p 8443:443 mazelab/nginx-proxy
+    # -> queries to 8080 will be redirected to 8443
+    
+    $ docker run -d -p 8080:80 -p 8443:443 -e HTTPS_REDIRECT_PORT=443 mazelab/nginx-proxy
+    # -> queries to 8080 will be redirected to 443
 
 ### Usage
 
