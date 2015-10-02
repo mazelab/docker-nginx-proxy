@@ -110,7 +110,7 @@ ENV GLOB_WORKER_RLIMIT_NOFILE 1024
 ENV GLOB_ERROR_LOG_LEVEL error
 
 # Time the server keeps the connection active without request from client
-ENV GLOB_KEEPALIVE_TIMEOUT 60
+ENV GLOB_KEEPALIVE_TIMEOUT 0
 
 # Number of idle connections to upstream services to keep and don't waste time for TCP handshaking etc.
 ENV GLOB_UPSTREAM_IDLE_CONNECTIONS 0

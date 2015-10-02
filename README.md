@@ -307,7 +307,7 @@ Choose from: crit, error, warn, info, debug
 ## GLOB_KEEPALIVE_TIMEOUT
 ### Info
 The time a worker will hold a connection to a client without a request in seconds.
-### Default: 60
+### Default: 0
 ---
 ## GLOB_UPSTREAM_IDLE_CONNECTIONS
 ### Info
