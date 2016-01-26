@@ -130,6 +130,9 @@ ENV DOCKER_HOST unix:///tmp/docker.sock
 # Set custom ssl redirect port
 ENV GLOB_SSL_REDIRECT_PORT ""
 
+# define proxy read timeout in seconds
+ENV GLOB_PROXY_READ_TIMEOUT 420
+
 RUN chmod a+x /up/prepare.sh && bash ./up/prepare.sh 
 RUN rm -rf /up
 

@@ -228,6 +228,10 @@ See [nginx resolver docs](http://nginx.org/en/docs/http/ngx_http_core_module.htm
 Redirect calls via http to https.
 ### Default: 1
 ---
+## GLOB_SSL_REDIRECT_PORT
+Defines custom ssl redirect port.
+### Default:
+---
 ## GLOB_DEFAULT_HOST
 ### Info
 To set the default host for [nginx](http://nginx.org/ru/) use the env var `GLOB_DEFAULT_HOST=foo.bar.com`. 
@@ -345,7 +349,11 @@ You may need to exceed that for bigger applications like JIRA.
 ## GLOB_WILD_CORS
 ### Info
 Allows any cross origin requests globally.
-### Default: 0
+---
+## GLOB_PROXY_READ_TIMEOUT
+### Info
+Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxied server does not transmit anything within this time, the connection is closed.
+### Default: 420
 
 # Big Customization
 
